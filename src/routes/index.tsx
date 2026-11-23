@@ -5,9 +5,9 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "FullFrame — Run HTML Full Screen" },
-      { name: "description", content: "Paste HTML, CSS and JavaScript or upload an HTML file and run it instantly in full screen." },
+      { name: "description", content: "Paste HTML, CSS and JavaScript or upload an HTML file and run it instantly across the whole page." },
       { property: "og:title", content: "FullFrame — Run HTML Full Screen" },
-      { property: "og:description", content: "Paste or upload HTML and run it instantly in full screen." },
+      { property: "og:description", content: "Paste or upload HTML and run it instantly across the whole page." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
 
 const SAMPLE = `<!doctype html>
 <html><body style="margin:0;display:grid;place-items:center;height:100vh;background:#111;color:#0f0;font-family:monospace">
-<h1>Hello, full screen!</h1>
+<h1>Hello, full page!</h1>
 </body></html>`;
 
 function isHtmlFile(file: File) {
@@ -56,14 +56,7 @@ function Index() {
     if (!running) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setRunning(false);
     window.addEventListener("keydown", onKey);
-    document.documentElement.requestFullscreen?.().catch(() => {});
-    const onFs = () => !document.fullscreenElement && setRunning(false);
-    document.addEventListener("fullscreenchange", onFs);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.removeEventListener("fullscreenchange", onFs);
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, [running]);
 
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -79,11 +72,25 @@ function Index() {
 
   if (running) {
     return (
-      <div className="fixed inset-0 bg-background">
-        <iframe title="Output" src={blobUrl ?? undefined} allow="fullscreen; autoplay; gamepad" allowFullScreen sandbox="allow-scripts allow-modals allow-forms allow-popups allow-pointer-lock allow-downloads" className="h-full w-full border-0" />
-        <button onClick={() => setRunning(false)} className="fixed right-3 top-3 rounded-md bg-primary/80 px-3 py-1 text-xs text-primary-foreground hover:bg-primary">
-          Exit (Esc)
-        </button>
+      <div className="fixed inset-0 z-50 bg-background">
+        <iframe
+          title="Output"
+          src={blobUrl ?? undefined}
+          allow="autoplay; gamepad"
+          sandbox="allow-scripts allow-modals allow-forms allow-popups allow-pointer-lock allow-downloads"
+          className="h-full w-full border-0"
+        />
+        <div className="absolute right-3 top-3 flex items-center gap-2">
+          {fileName && (
+            <span className="rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">{fileName}</span>
+          )}
+          <button
+            onClick={() => setRunning(false)}
+            className="rounded-md bg-primary/80 px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary"
+          >
+            Exit (Esc)
+          </button>
+        </div>
       </div>
     );
   }
@@ -130,12 +137,12 @@ function Index() {
             ⬆ Upload HTML file
           </button>
           <button onClick={() => setRunning(true)} className="rounded-md bg-primary px-5 py-2 font-medium text-primary-foreground hover:bg-primary/90">
-            ▶ Run full screen
+            ▶ Run full page
           </button>
         </div>
       </header>
       <p className="text-sm text-muted-foreground">
-        Paste your HTML below, upload a file, or drag a file onto this page. Press Esc to come back.
+        Paste your HTML below, upload a file, or drag a file onto this page. It runs across the whole page — press Esc to come back.
       </p>
       {fileName && (
         <p className="flex items-center gap-2 text-sm text-foreground">
