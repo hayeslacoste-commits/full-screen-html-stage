@@ -66,10 +66,21 @@ function Index() {
     };
   }, [running]);
 
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!running) return;
+    const url = URL.createObjectURL(new Blob([code], { type: "text/html" }));
+    setBlobUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+      setBlobUrl(null);
+    };
+  }, [running, code]);
+
   if (running) {
     return (
       <div className="fixed inset-0 bg-background">
-        <iframe title="Output" srcDoc={code} sandbox="allow-scripts allow-modals allow-forms allow-popups" className="h-full w-full border-0" />
+        <iframe title="Output" src={blobUrl ?? undefined} allow="fullscreen; autoplay; gamepad" allowFullScreen sandbox="allow-scripts allow-modals allow-forms allow-popups allow-pointer-lock allow-downloads" className="h-full w-full border-0" />
         <button onClick={() => setRunning(false)} className="fixed right-3 top-3 rounded-md bg-primary/80 px-3 py-1 text-xs text-primary-foreground hover:bg-primary">
           Exit (Esc)
         </button>
