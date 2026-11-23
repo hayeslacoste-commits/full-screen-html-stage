@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { prepareHtmlForPreview } from "@/lib/html-compatibility";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -62,7 +63,7 @@ function Index() {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!running) return;
-    const url = URL.createObjectURL(new Blob([code], { type: "text/html" }));
+    const url = URL.createObjectURL(new Blob([prepareHtmlForPreview(code)], { type: "text/html" }));
     setBlobUrl(url);
     return () => {
       URL.revokeObjectURL(url);
@@ -77,7 +78,7 @@ function Index() {
           title="Output"
           src={blobUrl ?? undefined}
           allow="autoplay; gamepad"
-          sandbox="allow-scripts allow-modals allow-forms allow-popups allow-pointer-lock allow-downloads"
+          sandbox="allow-scripts allow-same-origin allow-modals allow-forms allow-popups allow-pointer-lock allow-downloads"
           className="h-full w-full border-0"
         />
         <div className="absolute right-3 top-3 flex items-center gap-2">
