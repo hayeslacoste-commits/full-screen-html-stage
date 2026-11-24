@@ -28,3 +28,5 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+- HTML previews use the shared service-worker package runtime (`src/lib/preview-runtime.ts` and `public/fullframe-sw.js`) for pasted, uploaded, and dropped content so relative assets and navigation resolve at real URLs; preserve the Blob fallback only for standalone documents.
