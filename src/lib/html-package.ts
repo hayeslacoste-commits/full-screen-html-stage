@@ -34,19 +34,18 @@ function createFlashPage(swfPath: string) {
     #game{display:grid;place-items:center}#game>*{width:100%;height:100%}
     #status{position:fixed;inset:0;display:grid;place-items:center;margin:0;color:#fff;background:#111;font:16px system-ui;z-index:2}
   </style>
-  <script>
-    window.RufflePlayer = window.RufflePlayer || {};
-    window.RufflePlayer.config = {
-      publicPath: "https://mysiteconsole.pro",
-      autoplay: "on",
-      letterbox: "fullscreen",
-      scale: "showAll",
-      allowScriptAccess: true,
-      contextMenu: true,
-      warnOnUnsupportedContent: false
-    };
-  </script>
-  <script src="https://mysiteconsole.pro"></script>
+    <script>
+  window.RufflePlayer = window.RufflePlayer || {};
+  window.RufflePlayer.config = {
+    publicPath: window.location.origin + "/ruffle/",
+    autoplay: "on",
+    unmuteOverlay: "hidden",
+    contextMenu: "off",
+    splashScreen: false,
+    logLevel: "error",
+  };
+</script>
+<script src="/ruffle/ruffle.js"></script>
 </head>
 <body>
   <div id="game"></div>
