@@ -19,6 +19,55 @@ export interface HtmlPackage {
 
 const PAGE_EXTENSION = /\.(html?|xhtml|svg|txt)$/i;
 const HTML_EXTENSION = /\.(html?|xhtml)$/i;
+const FLASH_EXTENSION = /\.swf$/i;
+
+function createFlashPage(swfPath: string) {
+  const swfUrl = JSON.stringify(swfPath).replace(/</g, "\\u003c");
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Flash game</title>
+  <style>
+    html,body,#game{width:100%;height:100%;margin:0;overflow:hidden;background:#111}
+    #game{display:grid;place-items:center}#game>*{width:100%;height:100%}
+    #status{position:fixed;inset:0;display:grid;place-items:center;margin:0;color:#fff;background:#111;font:16px system-ui;z-index:2}
+  </style>
+  <script>
+    window.RufflePlayer = window.RufflePlayer || {};
+    window.RufflePlayer.config = {
+      publicPath: "/ruffle/",
+      autoplay: "on",
+      letterbox: "fullscreen",
+      scale: "showAll",
+      allowScriptAccess: true,
+      contextMenu: true,
+      warnOnUnsupportedContent: false
+    };
+  </script>
+  <script src="/ruffle/ruffle.js"></script>
+</head>
+<body>
+  <div id="game"></div>
+  <p id="status" role="status">Starting game…</p>
+  <script>
+    (async () => {
+      const status = document.getElementById("status");
+      try {
+        const player = window.RufflePlayer.newest().createPlayer();
+        document.getElementById("game").appendChild(player);
+        await player.ruffle().load({ url: ${swfUrl} });
+        status.remove();
+      } catch (error) {
+        status.textContent = "This Flash game could not start: " + (error && error.message ? error.message : String(error));
+        status.setAttribute("role", "alert");
+      }
+    })();
+  </script>
+</body>
+</html>`;
+}
 
 function normalizedPath(path: string) {
   const parts = path.replace(/\\/g, "/").split("/");
@@ -70,10 +119,20 @@ export function createHtmlPackage(entries: PreviewFile[], name = "HTML package")
 
   const pages = files.filter((entry) => PAGE_EXTENSION.test(entry.path)).map((entry) => entry.path);
   pages.sort(comparePages);
-  const entryPath = pages[0];
+  const htmlPages = pages.filter((path) => HTML_EXTENSION.test(path));
+  const flashPath = files.find((entry) => FLASH_EXTENSION.test(entry.path))?.path;
+  const entryPath = htmlPages[0] ?? (flashPath ? "index.html" : pages[0]);
 
   if (!entryPath) {
-    throw new Error("No HTML page found. Include an HTML file, or upload a ZIP or folder containing one.");
+    throw new Error("No HTML page or Flash game found. Include an HTML file, SWF, ZIP, or folder containing one.");
+  }
+
+  if (!htmlPages.length && flashPath) {
+    files.unshift({
+      path: entryPath,
+      data: new TextEncoder().encode(createFlashPage(flashPath)),
+      type: "text/html",
+    });
   }
 
   return { name, entryPath, files };

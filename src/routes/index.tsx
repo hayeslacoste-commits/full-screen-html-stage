@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { FolderOpen, Gamepad2, LockKeyhole, Play } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SignInControl } from "@/components/sign-in-control";
+import { getGateContent } from "@/lib/gate.functions";
+import type { LibraryGame } from "@/lib/gate-shared";
 import {
   createStandalonePackage,
   filesFromDrop,
@@ -17,6 +21,7 @@ import {
 } from "@/lib/preview-runtime";
 
 export const Route = createFileRoute("/")({
+  loader: () => getGateContent(),
   head: () => ({
     meta: [
       { title: "FullFrame — Run HTML Full Screen" },
@@ -36,6 +41,7 @@ const SAMPLE = `<!doctype html>
 </body></html>`;
 
 function Index() {
+  const gate = Route.useLoaderData();
   const [htmlPackage, setHtmlPackage] = useState(() => createStandalonePackage(SAMPLE));
   const [code, setCode] = useState(SAMPLE);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -43,6 +49,7 @@ function Index() {
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [openingGame, setOpeningGame] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -98,6 +105,27 @@ function Index() {
     }
   };
 
+  const openLibraryGame = async (game: LibraryGame) => {
+    setOpeningGame(game.id);
+    setError(null);
+    try {
+      const response = await fetch(game.url);
+      if (!response.ok) throw new Error(`Could not download ${game.title}. Try again.`);
+      const file = new File([await response.blob()], game.fileName, {
+        type: response.headers.get("content-type") ?? "application/octet-stream",
+      });
+      const nextPackage = await packageFromFiles([{ file, path: game.fileName }]);
+      setHtmlPackage(nextPackage);
+      setCode(packageEntryCode(nextPackage));
+      setFileName(nextPackage.name);
+      setSession(await createPreviewSession(nextPackage));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : `Could not start ${game.title}.`);
+    } finally {
+      setOpeningGame(null);
+    }
+  };
+
   const clear = () => {
     const sample = createStandalonePackage(SAMPLE);
     setHtmlPackage(sample);
@@ -130,7 +158,7 @@ function Index() {
             }
           }}
         />
-        <div className="absolute right-3 top-3 flex items-center gap-2">
+        <div className="absolute left-3 top-3 flex items-center gap-2">
           {fileName && (
             <span className="rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">{fileName}</span>
           )}
@@ -193,8 +221,11 @@ function Index() {
         }}
       />
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-mono text-2xl font-bold text-foreground">FullFrame</h1>
+        <h1 className="flex items-center gap-2 font-mono text-2xl font-bold text-foreground">
+          <Gamepad2 className="size-7" aria-hidden="true" /> FullFrame
+        </h1>
         <div className="flex flex-wrap items-center gap-2">
+          <SignInControl gate={gate} />
           <button
             disabled={loading}
             onClick={() => fileInputRef.current?.click()}
@@ -221,6 +252,44 @@ function Index() {
       <p className="text-sm text-muted-foreground">
         Paste HTML, choose a file or ZIP, add a whole folder, or drag them here. Linked files and pages run together — press Esc to come back.
       </p>
+      {gate.unlocked ? (
+        <section aria-label="Hayes's game folder" className="rounded-xl border border-border bg-card p-4 text-card-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <FolderOpen className="size-5" aria-hidden="true" /> Hayes's game folder
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">Choose any game to open it across the page.</p>
+            </div>
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">{gate.games.length} games</span>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {gate.games.map((game) => (
+              <button
+                key={game.id}
+                type="button"
+                aria-label={`Play ${game.title}`}
+                disabled={openingGame !== null}
+                onClick={() => void openLibraryGame(game)}
+                className="group flex min-h-20 items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary hover:bg-accent disabled:opacity-60"
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
+                  <Play className="size-4 fill-current" aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-medium leading-tight">{openingGame === game.id ? "Opening…" : game.title}</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">{game.kind === "flash" ? "Flash classic" : "HTML game"}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <div className="flex items-center gap-3 rounded-lg border border-dashed border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+          <LockKeyhole className="size-4 shrink-0" aria-hidden="true" />
+          Sign in to open Hayes's private folder with 17 games.
+        </div>
+      )}
       {fileName && (
         <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
           <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">{fileName}</span>

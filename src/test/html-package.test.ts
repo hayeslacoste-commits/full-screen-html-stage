@@ -75,8 +75,21 @@ describe("HTML packages", () => {
     expect(result.files.map((file) => file.path)).toEqual(["index.html"]);
 
     expect(() => createHtmlPackage([textFile("image.png", "not really a page")])).toThrow(
-      "No HTML page found",
+      "No HTML page or Flash game found",
     );
+  });
+
+  it("creates a local Flash player page for ZIPs that contain only a SWF", () => {
+    const swf = new Uint8Array([70, 87, 83]);
+    const result = createHtmlPackage([
+      textFile("papasbakeria/gameinfo.txt", "Instructions, not a start page"),
+      { path: "papasbakeria/papasbakeria.swf", data: swf, type: "application/x-shockwave-flash" },
+    ]);
+
+    expect(result.entryPath).toBe("index.html");
+    expect(result.files.find((file) => file.path === "papasbakeria.swf")?.data).toEqual(swf);
+    expect(packageEntryCode(result)).toContain('url: "papasbakeria.swf"');
+    expect(packageEntryCode(result)).toContain('src="/ruffle/ruffle.js"');
   });
 
   it("uses index.html for pasted HTML", () => {

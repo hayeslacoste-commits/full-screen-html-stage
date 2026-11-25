@@ -30,3 +30,5 @@ use the editor.
 <!-- LOVABLE:END -->
 
 - HTML previews use the shared service-worker package runtime (`src/lib/preview-runtime.ts` and `public/fullframe-sw.js`) for pasted, uploaded, and dropped content so relative assets and navigation resolve at real URLs; preserve the Blob fallback only for standalone documents.
+- The private game library is returned only by the encrypted-session gate in `src/lib/gate.functions.ts`; never move game manifests or credentials into public loader data, and keep passwords server-only.
+- SWF-only uploads and archives get a generated HTML launcher using Ruffle; keep its script in `public/ruffle/`, serve its large WASM files through the asset-backed mappings in `public/fullframe-sw.js`, prefer Flash over instruction text, and preserve the narrowly scoped provider relay.
