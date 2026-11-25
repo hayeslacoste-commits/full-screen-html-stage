@@ -18,5 +18,5 @@ export const gameLibrary: readonly LibraryGame[] = [
   { id: "burgeria", title: "Papa's Burgeria", fileName: "papasburgeria.zip", url: "/games/papasburgeria.zip", kind: "flash" },
   { id: "pizzeria", title: "Papa's Pizzeria", fileName: "papaspizzeria.zip", url: "/games/papaspizzeria.zip", kind: "flash" },
   { id: "happy-wheels", title: "Happy Wheels", fileName: "HappyWheels_1.swf", url: "/games/HappyWheels_1.swf", kind: "flash" },
-  { id: "3d-plan", title: "3D Plane", fileName: "3dplan.html", url: "/api/public/fliplineads?target=https%3A%2F%2Fgithub.com%2Fhayeslacoste-commits%2Ffull-screen-html-stage%2Freleases%2Fdownload%2Fv1.0%2F3dplan.html", kind: "html" },
+  { id: "3d-plan", title: "3D Plane", fileName: "3dplan.html", url: "/api/public/fliplineads?release=v1.0/3dplan.html", kind: "html" },
 ];
