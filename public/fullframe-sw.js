@@ -2,10 +2,6 @@
 const PREFIX = "/__fullframe/";
 const sessions = new Map();
 const MAX_SESSIONS = 4;
-const RUFFLE_WASM = {
-  "/ruffle/ruffle_web_bg.QDRSAAAZ.wasm": "/__l5e/assets-v1/f0311b48-84b0-4ec0-91f4-90662856a612/ruffle_web_bg.QDRSAAAZ.wasm",
-  "/ruffle/ruffle_web-wasm_mvp_bg.UMWKJ7EM.wasm": "/__l5e/assets-v1/369ea2de-5f31-49a5-837b-d72ca812b020/ruffle_web-wasm_mvp_bg.UMWKJ7EM.wasm",
-};
 
 const MIME_TYPES = {
   html: "text/html; charset=utf-8",
@@ -194,11 +190,6 @@ async function handleRequest(request) {
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-  const ruffleWasm = RUFFLE_WASM[url.pathname];
-  if (url.origin === self.location.origin && ruffleWasm) {
-    event.respondWith(fetch(ruffleWasm));
-    return;
-  }
 
   if (
     (url.hostname === "www.fliplineads.com" || url.hostname === "fliplineads.com") &&
