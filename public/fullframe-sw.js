@@ -6,43 +6,28 @@ const MAX_SESSIONS = 4;
 const MIME_TYPES = {
   html: "text/html; charset=utf-8",
   htm: "text/html; charset=utf-8",
-  xhtml: "application/xhtml+xml; charset=utf-8",
   css: "text/css; charset=utf-8",
   js: "text/javascript; charset=utf-8",
   mjs: "text/javascript; charset=utf-8",
-  cjs: "text/javascript; charset=utf-8",
   json: "application/json; charset=utf-8",
-  map: "application/json; charset=utf-8",
   wasm: "application/wasm",
-  xml: "application/xml; charset=utf-8",
-  txt: "text/plain; charset=utf-8",
-  csv: "text/csv; charset=utf-8",
   svg: "image/svg+xml",
   png: "image/png",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   gif: "image/gif",
   webp: "image/webp",
-  avif: "image/avif",
-  bmp: "image/bmp",
   ico: "image/x-icon",
   mp3: "audio/mpeg",
   wav: "audio/wav",
   ogg: "audio/ogg",
-  oga: "audio/ogg",
-  m4a: "audio/mp4",
-  flac: "audio/flac",
   mp4: "video/mp4",
   webm: "video/webm",
-  mov: "video/quicktime",
   woff: "font/woff",
   woff2: "font/woff2",
   ttf: "font/ttf",
-  otf: "font/otf",
-  eot: "application/vnd.ms-fontobject",
-  pdf: "application/pdf",
   swf: "application/x-shockwave-flash",
-  zip: "application/zip",
+  zip: "application/zip"
 };
 
 self.addEventListener("install", () => self.skipWaiting());
@@ -71,7 +56,8 @@ self.addEventListener("message", (event) => {
   const message = event.data;
   if (message?.type === "FULLFRAME_INSTALL") {
     storeSession(message.sessionId, message.files);
-    event.ports[0]?.postMessage({ ok: true });
+    const port = event.ports && event.ports.at(0);
+    if (port) port.postMessage({ ok: true });
   }
   if (message?.type === "FULLFRAME_DISPOSE") {
     sessions.delete(message.sessionId);
@@ -134,16 +120,17 @@ function rangeResponse(request, file) {
 
   if (range && size > 0) {
     const match = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
-    if (!match || (!match[1] && !match[2])) {
+    const startStr = match ? match.at(1) : "";
+    const endStr = match ? match.at(2) : "";
+    if (!match || (!startStr && !endStr)) {
       return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${size}` } });
     }
 
-    if (!match[1]) {
-      const suffixLength = Number(match[2]);
-      start = Math.max(0, size - suffixLength);
+    if (!startStr) {
+      start = Math.max(0, size - Number(endStr));
     } else {
-      start = Number(match[1]);
-      if (match[2]) end = Math.min(Number(match[2]), size - 1);
+      start = Number(startStr);
+      if (endStr) end = Math.min(Number(endStr), size - 1);
     }
 
     if (start >= size || end < start) {
@@ -191,7 +178,12 @@ async function handleRequest(request) {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  if (
+  // Never intercept local /ruffle/ or /games/ static files
+  if (url.origin === self.location.origin && (url.pathname.startsWith("/ruffle/") || url.pathname.startsWith("/games/"))) {
+    return;
+  }
+
+    if (
     (url.hostname === "www.fliplineads.com" || url.hostname === "fliplineads.com") &&
     url.pathname.startsWith("/serve/")
   ) {
