@@ -19,4 +19,5 @@ export const gameLibrary: readonly LibraryGame[] = [
   { id: "pizzeria", title: "Papa's Pizzeria", fileName: "papaspizzeria.zip", url: "/games/papaspizzeria.zip", kind: "flash" },
   { id: "happy-wheels", title: "Happy Wheels", fileName: "HappyWheels_1.swf", url: "/games/HappyWheels_1.swf", kind: "flash" },
   { id: "3d-plan", title: "3D Plane", fileName: "3dplan.html", url: "/api/public/fliplineads?release=v1.0/3dplan.html", kind: "html" },
+  { id: "temu", title: "Rocket Goal", fileName: "rocket.io.html", url: "/games/rocket.io.html", kind: "html" },
 ];
