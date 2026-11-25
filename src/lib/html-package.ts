@@ -37,7 +37,7 @@ function createFlashPage(swfPath: string) {
   <script>
     window.RufflePlayer = window.RufflePlayer || {};
     window.RufflePlayer.config = {
-      publicPath: "https://jsdelivr.net",
+      publicPath: "/ruffle/",
       autoplay: "on",
       letterbox: "fullscreen",
       scale: "showAll",
@@ -46,7 +46,7 @@ function createFlashPage(swfPath: string) {
       warnOnUnsupportedContent: false
     };
   </script>
-  <script src="https://jsdelivr.net"></script>
+  <script src="/ruffle/ruffle.js"></script>
 </head>
 <body>
   <div id="game"></div>
