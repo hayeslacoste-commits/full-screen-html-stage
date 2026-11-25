@@ -18,4 +18,5 @@ export const gameLibrary: readonly LibraryGame[] = [
   { id: "burgeria", title: "Papa's Burgeria", fileName: "papasburgeria.zip", url: "/games/papasburgeria.zip", kind: "flash" },
   { id: "pizzeria", title: "Papa's Pizzeria", fileName: "papaspizzeria.zip", url: "/games/papaspizzeria.zip", kind: "flash" },
   { id: "happy-wheels", title: "Happy Wheels", fileName: "HappyWheels_1.swf", url: "/games/HappyWheels_1.swf", kind: "flash" },
+  { id: "3d-plan", title: "3D Plan", fileName: "3dplan.html", url: "https://github.com/hayeslacoste-commits/full-screen-html-stage/releases/download/v1.0/3dplan.html", kind: "html" },
 ];
