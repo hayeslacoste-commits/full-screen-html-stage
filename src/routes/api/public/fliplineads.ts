@@ -6,8 +6,14 @@ function requestedTarget(request: Request) {
 
   try {
     const target = new URL(value);
-    const allowedHost = target.hostname === "www.fliplineads.com" || target.hostname === "fliplineads.com";
-    if (!allowedHost || !target.pathname.startsWith("/serve/") || target.username || target.password) {
+    const isFlipline =
+      (target.hostname === "://fliplineads.com" || target.hostname === "fliplineads.com") &&
+      target.pathname.startsWith("/serve/");
+    const isMyRelease =
+      target.hostname === "github.com" &&
+      target.pathname.startsWith("/hayeslacoste-commits/full-screen-html-stage/releases/download/");
+
+    if ((!isFlipline && !isMyRelease) || target.username || target.password) {
       return null;
     }
     target.protocol = "https:";
@@ -23,23 +29,26 @@ export const Route = createFileRoute("/api/public/fliplineads")({
     handlers: {
       GET: async ({ request }) => {
         const target = requestedTarget(request);
-        if (!target) return new Response("Invalid game provider address", { status: 400 });
+        if (!target) return new Response("Invalid address", { status: 400 });
 
         try {
           const upstream = await fetch(target, {
             headers: { accept: request.headers.get("accept") ?? "*/*" },
             redirect: "follow",
           });
+          const isHtml = target.pathname.endsWith(".html");
           return new Response(upstream.body, {
             status: upstream.status,
             headers: {
-              "content-type": upstream.headers.get("content-type") ?? "application/xml",
+              "content-type": isHtml
+                ? "text/html; charset=utf-8"
+                : (upstream.headers.get("content-type") ?? "application/xml"),
               "cache-control": "no-store",
               "access-control-allow-origin": "*",
             },
           });
         } catch {
-          return new Response("The game provider is unavailable", { status: 502 });
+          return new Response("Upstream unavailable", { status: 502 });
         }
       },
     },
