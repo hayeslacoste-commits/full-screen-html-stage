@@ -1,19 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+const OWNER = "hayeslacoste-commits";
+const REPO = "full-screen-html-stage";
+
 function requestedTarget(request: Request) {
-  const value = new URL(request.url).searchParams.get("target");
+  const params = new URL(request.url).searchParams;
+
+  const releaseAsset = params.get("release");
+  if (releaseAsset && !releaseAsset.includes("..") && !releaseAsset.startsWith("/")) {
+    return new URL(
+      `/${OWNER}/${REPO}/releases/download/${releaseAsset}`,
+      "https://github.com",
+    );
+  }
+
+  const value = params.get("target");
   if (!value) return null;
 
   try {
     const target = new URL(value);
-    const isFlipline =
-      (target.hostname === "://fliplineads.com" || target.hostname === "fliplineads.com") &&
-      target.pathname.startsWith("/serve/");
-    const isMyRelease =
-      target.hostname === "github.com" &&
-      target.pathname.startsWith("/hayeslacoste-commits/full-screen-html-stage/releases/download/");
-
-    if ((!isFlipline && !isMyRelease) || target.username || target.password) {
+    const allowedHost = target.hostname === "://fliplineads.com" || target.hostname === "fliplineads.com";
+    if (!allowedHost || !target.pathname.startsWith("/serve/") || target.username || target.password) {
       return null;
     }
     target.protocol = "https:";
