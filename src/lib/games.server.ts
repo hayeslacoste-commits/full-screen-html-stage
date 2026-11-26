@@ -34,4 +34,5 @@ export const gameLibrary: readonly LibraryGame[] = [
   { id: "base", title: "Google Baseball", fileName: "base.html", url: "/games/base.html", kind: "html" },
   { id: "going", title: "Going Balls", fileName: "going.html", url: "/games/going.html", kind: "html" },
   { id: "heist", title: "Hei$t", fileName: "heist.html", url: "/games/heist.html", kind: "html" },
+  { id: "mine", title: "Minecraft", fileName: "mine.html", url: "/games/mine.html", kind: "html" },
 ];
