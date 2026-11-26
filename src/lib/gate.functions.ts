@@ -6,6 +6,7 @@ import {
   isAllowedEmail,
   normalizeEmail,
   type GateContent,
+  type LibraryGame,
 } from "@/lib/gate-shared";
 
 type GateSession = { unlocked?: boolean; email?: string };
@@ -39,18 +40,24 @@ export const getGateContent = createServerFn({ method: "GET" }).handler(
     }
 
     const { gameLibrary } = await import("@/lib/games.server");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
-      .from("saved_games")
-      .select("id, title")
-      .order("created_at", { ascending: true });
-    const saved = (data ?? []).map((row) => ({
-      id: `saved-${row.id}`,
-      title: row.title,
-      fileName: `${row.title}.html`,
-      url: "",
-      kind: "saved" as const,
-    }));
+    let saved: LibraryGame[] = [];
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data } = await supabaseAdmin
+        .from("saved_games")
+        .select("id, title")
+        .order("created_at", { ascending: true });
+      const savedRows: LibraryGame[] = (data ?? []).map((row) => ({
+        id: `saved-${row.id}`,
+        title: row.title,
+        fileName: `${row.title}.html`,
+        url: "",
+        kind: "saved" as const,
+      }));
+      saved = savedRows;
+    } catch {
+      // Cloud storage isn't configured on this host; show the built-in games only.
+    }
     return { unlocked: true, email: ALLOWED_EMAIL, games: [...gameLibrary, ...saved] };
   },
 );
@@ -78,6 +85,15 @@ export const lockSite = createServerFn({ method: "POST" }).handler(async () => {
   return { ok: true as const };
 });
 
+async function loadCloud() {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    return supabaseAdmin;
+  } catch {
+    throw new Error("Saving games only works on the Lovable-hosted site.");
+  }
+}
+
 async function requireUnlocked() {
   const session = await useSession<GateSession>(sessionConfig());
   if (!session.data.unlocked || session.data.email !== ALLOWED_EMAIL) {
@@ -97,7 +113,7 @@ export const addSavedGame = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     setResponseHeader("cache-control", "private, no-store");
     await requireUnlocked();
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await loadCloud();
     const { error } = await supabaseAdmin.from("saved_games").insert(data);
     if (error) throw new Error("Could not save the game. Try again.");
     return { ok: true as const };
@@ -108,7 +124,7 @@ export const getSavedGameHtml = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     setResponseHeader("cache-control", "private, no-store");
     await requireUnlocked();
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await loadCloud();
     const { data: row, error } = await supabaseAdmin
       .from("saved_games")
       .select("html")
