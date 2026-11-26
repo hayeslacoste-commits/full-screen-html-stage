@@ -29,4 +29,5 @@ export const gameLibrary: readonly LibraryGame[] = [
   { id: "collage", title: "Reteo Bowl", fileName: "retro-collage.html", url: "/games/retro-collage.html", kind: "html" },
   { id: "snow", title: "Snow Rider", fileName: "snowridr.html", url: "/games/snowridr.html", kind: "html" },
   { id: "winter", title: "Winter Moto X3M", fileName: "winter-moto.html", url: "/games/winter-moto.html", kind: "html" },
+  { id: "egg", title: "Eggy Car", fileName: "egg.html", url: "/games/egg.html", kind: "html" },
 ];
