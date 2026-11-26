@@ -116,7 +116,7 @@ export const addSavedGame = createServerFn({ method: "POST" })
     await requireUnlocked();
     const supabaseAdmin = await loadCloud();
     const { error } = await supabaseAdmin.from("saved_games").insert(data);
-    if (error) throw new Error("Could not save the game. Try again.");
+    if (error) throw new Error(error.message);
     return { ok: true as const };
   });
 
