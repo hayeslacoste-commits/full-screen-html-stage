@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Drift Boss – Upgraded Version</title>
+<style>
+  body {
+    margin: 0;
+    background: #0d0d0d;
+    font-family: Arial, sans-serif;
+    display: flex;
+    color: #fff;
+  }
+  #gameCanvas {
+    background: linear-gradient(#2b2b2b, #1a1a1a);
+    display: block;
+  }
+  #ui {
+    width: 260px;
+    padding: 15px;
+    background: #111;
+    border-left: 3px solid #333;
+  }
+  button {
+    width: 100%;
+    padding: 8px;
+    margin: 6px 0;
+    background: #333;
+    border: 1px solid #555;
+    color: #fff;
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.4;
+  }
+  h2 { margin-top: 0; }
+  #shopMenu {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="500" height="700"></canvas>
+
+<div id="ui">
+  <h2>Drift Boss</h2>
+
+  <div id="mainMenu">
+    <p>Score: <span id="score">0</span></p>
+    <p>Best: <span id="best">0</span></p>
+    <p>Coins: <span id="coins">0</span></p>
+
+    <h3>Upgrades</h3>
+    <p>Speed Lv: <span id="speedLv">1</span></p>
+    <button id="buySpeed">Buy Speed (20 coins)</button>
+
+    <p>Handling Lv: <span id="handlingLv">1</span></p>
+    <button id="buyHandling">Buy Handling (20 coins)</button>
+
+    <p>Double Score: <span id="doubleScoreLv">0</span></p>
+    <button id="buyDoubleScore">Buy Double Score (50 coins)</button>
+
+    <p>Car Skin: <span id="carSkinName">Basic</span></p>
+    <button id="buyCarSkin">Buy Better Car (80 coins)</button>
+
+    <h3>Game</h3>
+    <button id="startBtn">Start Run</button>
+    <button id="resetBest">Reset Best</button>
+  </div>
+
+  <div id="shopMenu">
+    <h3>Shop</h3>
+    <button id="shopRestart">Restart Run</button>
+    <button id="shopBack">Back to Menu</button>
+  </div>
+</div>
+
+<script>
+// ----------------------------
+// CAR SPRITES
+// ----------------------------
+const carSprites = {
+  basic: "https://i.imgur.com/8Qf0x0F.png",
+  sport: "https://i.imgur.com/2kQ2y0v.png"
+};
+
+let carImg
