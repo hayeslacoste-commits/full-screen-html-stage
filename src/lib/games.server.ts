@@ -20,4 +20,13 @@ export const gameLibrary: readonly LibraryGame[] = [
   { id: "happy-wheels", title: "Happy Wheels", fileName: "HappyWheels_1.swf", url: "/games/HappyWheels_1.swf", kind: "flash" },
   { id: "3d-plan", title: "3D Plane", fileName: "3dplan.html", url: "/api/public/fliplineads?release=v1.0/3dplan.html", kind: "html" },
   { id: "temu", title: "Rocket Goal", fileName: "rocket.io.html", url: "/games/rocket.io.html", kind: "html" },
+  { id: "slope", title: "Slope", fileName: "slope.html", url: "/games/slope.html", kind: "html" },
+  { id: "drift", title: "Drift Boss", fileName: "drift-boss.html", url: "/games/drift-boss.html", kind: "html" },
+  { id: "drive", title: "Drive Mad", fileName: "drive-mad.html", url: "/games/drive-mad.html", kind: "html" },
+  { id: "fnaf1", title: "Five Nights At Freddys 1", fileName: "fnaf.html", url: "/games/fnaf.html", kind: "html" },
+  { id: "reg", title: "Moto X3M", fileName: "moto.html", url: "/games/moto.html", kind: "html" },
+  { id: "bowl", title: "NFL Retro Bowl", fileName: "nfl-retro.html", url: "/games/nfl-retro.html", kind: "html" },
+  { id: "collage", title: "Reteo Bowl", fileName: "retro-collage.html", url: "/games/retro-collage.html", kind: "html" },
+  { id: "snow", title: "Snow Rider", fileName: "snowridr.html", url: "/games/snowridr.html", kind: "html" },
+  { id: "winter", title: "Winter Moto X3M", fileName: "winter-moto.html", url: "/games/winter-moto.html", kind: "html" },
 ];
