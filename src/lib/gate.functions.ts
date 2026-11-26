@@ -5,6 +5,7 @@ import {
   ALLOWED_EMAIL,
   isAllowedEmail,
   normalizeEmail,
+  savedGameRowId,
   type GateContent,
   type LibraryGame,
 } from "@/lib/gate-shared";
@@ -120,7 +121,11 @@ export const addSavedGame = createServerFn({ method: "POST" })
   });
 
 export const getSavedGameHtml = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string }) => ({ id: String(data.id).replace(/^saved-/, "") }))
+  .inputValidator((data: { id: string }) => {
+    const id = savedGameRowId(String(data.id ?? ""));
+    if (!id) throw new Error("Which game should be opened?");
+    return { id };
+  })
   .handler(async ({ data }) => {
     setResponseHeader("cache-control", "private, no-store");
     await requireUnlocked();
@@ -132,6 +137,21 @@ export const getSavedGameHtml = createServerFn({ method: "POST" })
       .single();
     if (error || !row) throw new Error("Could not find that game.");
     return { html: row.html };
+  });
+
+export const removeSavedGame = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string }) => {
+    const id = savedGameRowId(String(data.id ?? ""));
+    if (!id) throw new Error("Which game should be removed?");
+    return { id };
+  })
+  .handler(async ({ data }) => {
+    setResponseHeader("cache-control", "private, no-store");
+    await requireUnlocked();
+    const supabaseAdmin = await loadCloud();
+    const { error } = await supabaseAdmin.from("saved_games").delete().eq("id", data.id);
+    if (error) throw new Error("Could not remove the game. Try again.");
+    return { ok: true as const };
   });
 
 export { isAllowedEmail };

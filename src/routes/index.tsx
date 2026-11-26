@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FilePlus, FolderOpen, Gamepad2, LockKeyhole, Play } from "lucide-react";
+import { FilePlus, FolderOpen, Gamepad2, LockKeyhole, Play, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SignInControl } from "@/components/sign-in-control";
-import { addSavedGame, getGateContent, getSavedGameHtml } from "@/lib/gate.functions";
+import { addSavedGame, getGateContent, getSavedGameHtml, removeSavedGame } from "@/lib/gate.functions";
 import { useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import type { LibraryGame } from "@/lib/gate-shared";
@@ -47,7 +47,9 @@ function Index() {
   const router = useRouter();
   const saveGame = useServerFn(addSavedGame);
   const loadSavedHtml = useServerFn(getSavedGameHtml);
+  const removeGame = useServerFn(removeSavedGame);
   const [saving, setSaving] = useState(false);
+  const [removingGame, setRemovingGame] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [htmlPackage, setHtmlPackage] = useState(() => createStandalonePackage(SAMPLE));
   const [code, setCode] = useState(SAMPLE);
@@ -136,6 +138,22 @@ function Index() {
       setError(cause instanceof Error ? cause.message : `Could not start ${game.title}.`);
     } finally {
       setOpeningGame(null);
+    }
+  };
+
+  const removeLibraryGame = async (game: LibraryGame) => {
+    if (!window.confirm(`Remove "${game.title}" from your game folder?`)) return;
+    setRemovingGame(game.id);
+    setError(null);
+    setNotice(null);
+    try {
+      await removeGame({ data: { id: game.id } });
+      setNotice(`Removed "${game.title}" from your game folder.`);
+      await router.invalidate();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : `Could not remove ${game.title}.`);
+    } finally {
+      setRemovingGame(null);
     }
   };
 
@@ -304,28 +322,45 @@ function Index() {
               <h2 className="flex items-center gap-2 text-lg font-semibold">
                 <FolderOpen className="size-5" aria-hidden="true" /> Hayes's game folder
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">Choose any game to open it across the page.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Choose any game to open it across the page. Games you added have an ✕ to remove them.</p>
             </div>
             <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">{gate.games.length} games</span>
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {gate.games.map((game) => (
-              <button
-                key={game.id}
-                type="button"
-                aria-label={`Play ${game.title}`}
-                disabled={openingGame !== null}
-                onClick={() => void openLibraryGame(game)}
-                className="group flex min-h-20 items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary hover:bg-accent disabled:opacity-60"
-              >
-                <span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
-                  <Play className="size-4 fill-current" aria-hidden="true" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-medium leading-tight">{openingGame === game.id ? "Opening…" : game.title}</span>
-                  <span className="mt-1 block text-xs text-muted-foreground">{game.kind === "flash" ? "Flash classic" : game.kind === "saved" ? "Added by you" : "HTML game"}</span>
-                </span>
-              </button>
+              <div key={game.id} className="relative">
+                <button
+                  type="button"
+                  aria-label={`Play ${game.title}`}
+                  disabled={openingGame !== null || removingGame !== null}
+                  onClick={() => void openLibraryGame(game)}
+                  className="group flex min-h-20 w-full items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary hover:bg-accent disabled:opacity-60"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
+                    <Play className="size-4 fill-current" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-medium leading-tight">{openingGame === game.id ? "Opening…" : game.title}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">{game.kind === "flash" ? "Flash classic" : game.kind === "saved" ? "Added by you" : "HTML game"}</span>
+                  </span>
+                </button>
+                {game.kind === "saved" && (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${game.title}`}
+                    title={`Remove ${game.title}`}
+                    disabled={removingGame !== null}
+                    onClick={() => void removeLibraryGame(game)}
+                    className="absolute right-2 top-2 grid size-7 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
+                  >
+                    {removingGame === game.id ? (
+                      <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
+                    ) : (
+                      <X className="size-3.5" aria-hidden="true" />
+                    )}
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </section>

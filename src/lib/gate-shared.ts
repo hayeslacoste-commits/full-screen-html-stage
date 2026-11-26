@@ -19,3 +19,8 @@ export function normalizeEmail(email: string) {
 export function isAllowedEmail(email: string) {
   return normalizeEmail(email) === ALLOWED_EMAIL;
 }
+
+// Folder entries for cloud-saved games are id'd "saved-<row id>"; the stored row is just "<row id>".
+export function savedGameRowId(id: string) {
+  return id.trim().replace(/^saved-/, "");
+}
