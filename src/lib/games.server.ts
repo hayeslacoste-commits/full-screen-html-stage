@@ -31,4 +31,5 @@ export const gameLibrary: readonly LibraryGame[] = [
   { id: "winter", title: "Winter Moto X3M", fileName: "winter-moto.html", url: "/games/winter-moto.html", kind: "html" },
   { id: "egg", title: "Eggy Car", fileName: "egg.html", url: "/games/egg.html", kind: "html" },
   { id: "fall", title: "Fall Guys", fileName: "fall.html", url: "/games/fall.html", kind: "html" },
+  { id: "base", title: "Google Baseball", fileName: "base.html", url: "/games/base.html", kind: "html" },
 ];
