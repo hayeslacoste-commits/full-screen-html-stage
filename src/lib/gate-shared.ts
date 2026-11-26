@@ -5,7 +5,7 @@ export interface LibraryGame {
   title: string;
   fileName: string;
   url: string;
-  kind: "html" | "flash";
+  kind: "html" | "flash" | "saved";
 }
 
 export type GateContent =

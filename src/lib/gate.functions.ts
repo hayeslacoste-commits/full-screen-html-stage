@@ -39,7 +39,19 @@ export const getGateContent = createServerFn({ method: "GET" }).handler(
     }
 
     const { gameLibrary } = await import("@/lib/games.server");
-    return { unlocked: true, email: ALLOWED_EMAIL, games: gameLibrary };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("saved_games")
+      .select("id, title")
+      .order("created_at", { ascending: true });
+    const saved = (data ?? []).map((row) => ({
+      id: `saved-${row.id}`,
+      title: row.title,
+      fileName: `${row.title}.html`,
+      url: "",
+      kind: "saved" as const,
+    }));
+    return { unlocked: true, email: ALLOWED_EMAIL, games: [...gameLibrary, ...saved] };
   },
 );
 
@@ -65,5 +77,45 @@ export const lockSite = createServerFn({ method: "POST" }).handler(async () => {
   await session.clear();
   return { ok: true as const };
 });
+
+async function requireUnlocked() {
+  const session = await useSession<GateSession>(sessionConfig());
+  if (!session.data.unlocked || session.data.email !== ALLOWED_EMAIL) {
+    throw new Error("Please sign in first.");
+  }
+}
+
+export const addSavedGame = createServerFn({ method: "POST" })
+  .inputValidator((data: { title: string; html: string }) => {
+    const title = String(data.title ?? "").trim().slice(0, 100);
+    const html = String(data.html ?? "");
+    if (!title) throw new Error("Please give the game a name.");
+    if (!html.trim()) throw new Error("Paste some HTML first.");
+    if (html.length > 20_000_000) throw new Error("That HTML is too large to save.");
+    return { title, html };
+  })
+  .handler(async ({ data }) => {
+    setResponseHeader("cache-control", "private, no-store");
+    await requireUnlocked();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("saved_games").insert(data);
+    if (error) throw new Error("Could not save the game. Try again.");
+    return { ok: true as const };
+  });
+
+export const getSavedGameHtml = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string }) => ({ id: String(data.id).replace(/^saved-/, "") }))
+  .handler(async ({ data }) => {
+    setResponseHeader("cache-control", "private, no-store");
+    await requireUnlocked();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
+      .from("saved_games")
+      .select("html")
+      .eq("id", data.id)
+      .single();
+    if (error || !row) throw new Error("Could not find that game.");
+    return { html: row.html };
+  });
 
 export { isAllowedEmail };

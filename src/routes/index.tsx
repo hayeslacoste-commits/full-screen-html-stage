@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FolderOpen, Gamepad2, LockKeyhole, Play } from "lucide-react";
+import { FilePlus, FolderOpen, Gamepad2, LockKeyhole, Play } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SignInControl } from "@/components/sign-in-control";
-import { getGateContent } from "@/lib/gate.functions";
+import { addSavedGame, getGateContent, getSavedGameHtml } from "@/lib/gate.functions";
+import { useRouter } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import type { LibraryGame } from "@/lib/gate-shared";
 import {
   createStandalonePackage,
@@ -42,6 +44,11 @@ const SAMPLE = `<!doctype html>
 
 function Index() {
   const gate = Route.useLoaderData();
+  const router = useRouter();
+  const saveGame = useServerFn(addSavedGame);
+  const loadSavedHtml = useServerFn(getSavedGameHtml);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [htmlPackage, setHtmlPackage] = useState(() => createStandalonePackage(SAMPLE));
   const [code, setCode] = useState(SAMPLE);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -109,11 +116,17 @@ function Index() {
     setOpeningGame(game.id);
     setError(null);
     try {
-      const response = await fetch(game.url);
-      if (!response.ok) throw new Error(`Could not download ${game.title}. Try again.`);
-      const file = new File([await response.blob()], game.fileName, {
-        type: response.headers.get("content-type") ?? "application/octet-stream",
-      });
+      let file: File;
+      if (game.kind === "saved") {
+        const { html } = await loadSavedHtml({ data: { id: game.id } });
+        file = new File([html], game.fileName, { type: "text/html" });
+      } else {
+        const response = await fetch(game.url);
+        if (!response.ok) throw new Error(`Could not download ${game.title}. Try again.`);
+        file = new File([await response.blob()], game.fileName, {
+          type: response.headers.get("content-type") ?? "application/octet-stream",
+        });
+      }
       const nextPackage = await packageFromFiles([{ file, path: game.fileName }]);
       setHtmlPackage(nextPackage);
       setCode(packageEntryCode(nextPackage));
@@ -123,6 +136,27 @@ function Index() {
       setError(cause instanceof Error ? cause.message : `Could not start ${game.title}.`);
     } finally {
       setOpeningGame(null);
+    }
+  };
+
+  const addHtml = async () => {
+    if (!code.trim()) {
+      setError("Paste some HTML first.");
+      return;
+    }
+    const title = window.prompt("What should this game be called?")?.trim();
+    if (!title) return;
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await saveGame({ data: { title, html: code } });
+      setNotice(`Saved "${title}" to your game folder.`);
+      await router.invalidate();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not save the game.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -226,6 +260,17 @@ function Index() {
         </h1>
         <div className="flex flex-wrap items-center gap-2">
           <SignInControl gate={gate} />
+          {gate.unlocked && (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void addHtml()}
+              className="inline-flex items-center gap-2 rounded-md border border-input bg-card px-4 py-2 font-medium text-card-foreground hover:bg-accent disabled:opacity-50"
+            >
+              <FilePlus className="size-4" aria-hidden="true" />
+              {saving ? "Saving…" : "Add HTML"}
+            </button>
+          )}
           <button
             disabled={loading}
             onClick={() => fileInputRef.current?.click()}
@@ -278,7 +323,7 @@ function Index() {
                 </span>
                 <span className="min-w-0">
                   <span className="block font-medium leading-tight">{openingGame === game.id ? "Opening…" : game.title}</span>
-                  <span className="mt-1 block text-xs text-muted-foreground">{game.kind === "flash" ? "Flash classic" : "HTML game"}</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">{game.kind === "flash" ? "Flash classic" : game.kind === "saved" ? "Added by you" : "HTML game"}</span>
                 </span>
               </button>
             ))}
@@ -287,7 +332,7 @@ function Index() {
       ) : (
         <div className="flex items-center gap-3 rounded-lg border border-dashed border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
           <LockKeyhole className="size-4 shrink-0" aria-hidden="true" />
-          Sign in to open Hayes's private folder with 17 games.
+          Sign in to open Hayes's private game folder.
         </div>
       )}
       {fileName && (
@@ -320,6 +365,7 @@ function Index() {
         </div>
       )}
       {loading && <p className="text-sm text-muted-foreground">Reading your HTML package…</p>}
+      {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <textarea
         aria-label="HTML code"
