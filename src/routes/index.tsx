@@ -23,6 +23,7 @@ import {
 } from "@/lib/preview-runtime";
 import { buildRunnerHtml, LANGUAGES, LANGUAGE_SAMPLES, type EditorLanguage } from "@/lib/language-runner";
 import { editorUploadFromFiles } from "@/lib/editor-upload";
+import type { PythonPackage } from "@/lib/python-package";
 
 export const Route = createFileRoute("/")({
   loader: () => getGateContent(),
@@ -53,7 +54,8 @@ function Index() {
   const [saving, setSaving] = useState(false);
   const [removingGame, setRemovingGame] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [htmlPackage, setHtmlPackage] = useState(() => createStandalonePackage(SAMPLE));
+    const [htmlPackage, setHtmlPackage] = useState(() => createStandalonePackage(SAMPLE));
+  const [pythonPackage, setPythonPackage] = useState<PythonPackage | null>(null);
   const [code, setCode] = useState(SAMPLE);
   const [language, setLanguage] = useState<EditorLanguage>("html");
   const [scripts, setScripts] = useState<Record<"javascript" | "python", string>>(LANGUAGE_SAMPLES);
@@ -81,16 +83,25 @@ function Index() {
     try {
       const upload = await editorUploadFromFiles(incoming);
       if (sequence !== loadSequence.current) return;
+
       if (upload.language === "python") {
+        setPythonPackage(upload.pythonPackage);
         setScripts((current) => ({ ...current, python: upload.pythonPackage.code }));
         setPythonFileName(upload.pythonPackage.name);
         setLanguage("python");
+        const nextSession = await createPreviewSession(
+          createStandalonePackage(buildRunnerHtml("python", upload.pythonPackage.code, upload.pythonPackage)),
+        );
+        if (sequence === loadSequence.current) setSession(nextSession);
         return;
       }
+
       setHtmlPackage(upload.htmlPackage);
       setCode(packageEntryCode(upload.htmlPackage));
       setFileName(upload.htmlPackage.name);
       setLanguage("html");
+      const nextSession = await createPreviewSession(upload.htmlPackage);
+      if (sequence === loadSequence.current) setSession(nextSession);
     } catch (cause) {
       if (sequence === loadSequence.current) {
         setError(cause instanceof Error ? cause.message : "Could not read those files.");
@@ -120,7 +131,11 @@ function Index() {
     try {
       setSession(
         await createPreviewSession(
-          language === "html" ? htmlPackage : createStandalonePackage(buildRunnerHtml(language, scripts[language])),
+          language === "html"
+            ? htmlPackage
+            : createStandalonePackage(
+                buildRunnerHtml(language, scripts[language], language === "python" ? pythonPackage : null),
+              ),
         ),
       );
     } catch (cause) {
@@ -140,7 +155,7 @@ function Index() {
         file = new File([html], game.fileName, { type: "text/html" });
       } else {
         const response = await fetch(game.url);
-        if (!response.ok) throw new Error(`Could not download ${game.title}. Try again.`);
+        if (!response.ok) throw new Error("Could not download " + game.title + ". Try again.");
         file = new File([await response.blob()], game.fileName, {
           type: response.headers.get("content-type") ?? "application/octet-stream",
         });
@@ -152,31 +167,32 @@ function Index() {
       setLanguage("html");
       setSession(await createPreviewSession(nextPackage));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : `Could not start ${game.title}.`);
+      setError(cause instanceof Error ? cause.message : "Could not start " + game.title + ".");
     } finally {
       setOpeningGame(null);
     }
   };
 
   const removeLibraryGame = async (game: LibraryGame) => {
-    if (!window.confirm(`Remove "${game.title}" from your game folder?`)) return;
+    if (!window.confirm('Remove "' + game.title + '" from your game folder?')) return;
     setRemovingGame(game.id);
     setError(null);
     setNotice(null);
     try {
       await removeGame({ data: { id: game.id } });
-      setNotice(`Removed "${game.title}" from your game folder.`);
+      setNotice('Removed "' + game.title + '" from your game folder.');
       await router.invalidate();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : `Could not remove ${game.title}.`);
+      setError(cause instanceof Error ? cause.message : "Could not remove " + game.title + ".");
     } finally {
       setRemovingGame(null);
     }
   };
 
   const addHtml = async () => {
-    if (!code.trim()) {
-      setError("Paste some HTML first.");
+    const rawCode = language === "html" ? code : scripts[language];
+    if (!rawCode.trim()) {
+      setError("Paste or upload a game first.");
       return;
     }
     const title = window.prompt("What should this game be called?")?.trim();
@@ -185,8 +201,12 @@ function Index() {
     setError(null);
     setNotice(null);
     try {
-      await saveGame({ data: { title, html: code } });
-      setNotice(`Saved "${title}" to your game folder.`);
+      const payloadHtml =
+        language === "html"
+          ? code
+          : buildRunnerHtml(language, scripts[language], language === "python" ? pythonPackage : null);
+      await saveGame({ data: { title, html: payloadHtml } });
+      setNotice('Saved "' + title + '" to your game folder.');
       await router.invalidate();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not save the game.");
@@ -194,6 +214,7 @@ function Index() {
       setSaving(false);
     }
   };
+
 
   const clear = () => {
     const sample = createStandalonePackage(SAMPLE);
@@ -297,7 +318,7 @@ function Index() {
         </h1>
         <div className="flex flex-wrap items-center gap-2">
           <SignInControl gate={gate} />
-          {gate.unlocked && language === "html" && (
+          {gate.unlocked && (
             <button
               type="button"
               disabled={saving}
@@ -305,7 +326,7 @@ function Index() {
               className="inline-flex items-center gap-2 rounded-md border border-input bg-card px-4 py-2 font-medium text-card-foreground hover:bg-accent disabled:opacity-50"
             >
               <FilePlus className="size-4" aria-hidden="true" />
-              {saving ? "Saving…" : "Add HTML"}
+              {saving ? "Saving…" : "Add File"}
             </button>
           )}
           <button
