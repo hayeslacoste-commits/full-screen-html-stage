@@ -89,10 +89,6 @@ function Index() {
         setScripts((current) => ({ ...current, python: upload.pythonPackage.code }));
         setPythonFileName(upload.pythonPackage.name);
         setLanguage("python");
-        const nextSession = await createPreviewSession(
-          createStandalonePackage(buildRunnerHtml("python", upload.pythonPackage.code, upload.pythonPackage)),
-        );
-        if (sequence === loadSequence.current) setSession(nextSession);
         return;
       }
 
@@ -100,8 +96,6 @@ function Index() {
       setCode(packageEntryCode(upload.htmlPackage));
       setFileName(upload.htmlPackage.name);
       setLanguage("html");
-      const nextSession = await createPreviewSession(upload.htmlPackage);
-      if (sequence === loadSequence.current) setSession(nextSession);
     } catch (cause) {
       if (sequence === loadSequence.current) {
         setError(cause instanceof Error ? cause.message : "Could not read those files.");
