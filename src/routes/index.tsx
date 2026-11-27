@@ -66,6 +66,7 @@ function Index() {
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [openingGame, setOpeningGame] = useState<string | null>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -89,12 +90,14 @@ function Index() {
         setScripts((current) => ({ ...current, python: upload.pythonPackage.code }));
         setPythonFileName(upload.pythonPackage.name);
         setLanguage("python");
+        setUploadModalOpen(true);
         return;
       }
 
       setHtmlPackage(upload.htmlPackage);
       setCode(packageEntryCode(upload.htmlPackage));
       setFileName(upload.htmlPackage.name);
+      setUploadModalOpen(true);
       setLanguage("html");
     } catch (cause) {
       if (sequence === loadSequence.current) {
@@ -487,6 +490,63 @@ function Index() {
           dragging ? "border-primary ring-2 ring-ring" : "border-input"
         }`}
       />
+            {uploadModalOpen && activeFileName && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+          onClick={() => setUploadModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Ready to launch or save
+                </p>
+                <h2 className="mt-1 break-all font-mono text-lg font-bold text-foreground">
+                  {activeFileName}
+                </h2>
+              </div>
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setUploadModalOpen(false)}
+                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                disabled={saving || !gate.unlocked}
+                onClick={async () => {
+                  await addHtml();
+                  setUploadModalOpen(false);
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-3 font-medium text-foreground hover:bg-accent disabled:opacity-50"
+              >
+                <FilePlus className="size-4" />
+                {saving ? "Saving…" : "Add File"}
+              </button>
+              <button
+                type="button"
+                disabled={loading || starting}
+                onClick={async () => {
+                  setUploadModalOpen(false);
+                  await run();
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                <Play className="size-4 fill-current" />
+                {starting ? "Starting…" : "Run File"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
