@@ -48,6 +48,8 @@ function Index() {
   const saveGame = useServerFn(addSavedGame);
   const loadSavedHtml = useServerFn(getSavedGameHtml);
   const removeGame = useServerFn(removeSavedGame);
+  const createUpload = useServerFn(createSavedGameUpload);
+const finalizeUpload = useServerFn(finalizeSavedGameUpload);
   const [saving, setSaving] = useState(false);
   const [removingGame, setRemovingGame] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -144,10 +146,16 @@ function Index() {
     setError(null);
     try {
       let file: File;
-      if (game.kind === "saved") {
-        const { html } = await loadSavedHtml({ data: { id: game.id } });
-        file = new File([html], game.fileName, { type: "text/html" });
-      } else {
+         if (game.kind === "saved") {
+     const savedData = await loadSavedHtml({ data: { id: game.id } });
+     if (savedData.downloadUrl) {
+       const response = await fetch(savedData.downloadUrl);
+       if (!response.ok) throw new Error("Could not download " + game.title + ". Try again.");
+       file = new File([await response.blob()], game.fileName, { type: "text/html" });
+     } else {
+       file = new File([savedData.html], game.fileName, { type: "text/html" });
+     }
+   } else {
         const response = await fetch(game.url);
         if (!response.ok) throw new Error("Could not download " + game.title + ". Try again.");
         file = new File([await response.blob()], game.fileName, {
@@ -199,7 +207,17 @@ function Index() {
         language === "html"
           ? code
           : buildRunnerHtml(language, scripts[language], language === "python" ? pythonPackage : null);
-      await saveGame({ data: { title, html: payloadHtml } });
+
+      const upload = await createUpload({ data: { title } });
+      const putRes = await fetch(upload.signedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+        body: new Blob([payloadHtml], { type: "text/html; charset=utf-8" }),
+      });
+      if (!putRes.ok) {
+        throw new Error("File upload failed (" + putRes.status + "). Check that 'saved-games' bucket exists in Supabase.");
+      }
+      await finalizeUpload({ data: { title, storagePath: upload.storagePath } });
       setNotice('Saved "' + title + '" to your game folder.');
       await router.invalidate();
     } catch (cause) {
