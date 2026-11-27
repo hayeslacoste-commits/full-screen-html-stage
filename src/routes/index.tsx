@@ -14,6 +14,17 @@ import {
   removeSavedGame,
 } from "@/lib/gate.functions";
 import {
+  createStandalonePackage,
+  filesFromDrop,
+  filesFromFileList,
+  packageEntryCode,
+  packageFromFiles,
+  packagePages,
+  updatePackageEntry,
+  type IncomingFile,
+} from "@/lib/html-package";
+
+import {
   createPreviewSession,
   disposePreviewSession,
   type PreviewSession,
