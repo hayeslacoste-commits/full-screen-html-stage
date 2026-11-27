@@ -13,7 +13,7 @@ export const LANGUAGE_SAMPLES: Record<Exclude<EditorLanguage, "html">, string> =
   python: 'import math\n\nfor n in range(1, 6):\n    print(n, "squared is", n * n)\nprint("Pi is about", round(math.pi, 4))',
 };
 
-export const PYODIDE_URL = "https://jsdelivr.net";
+export const PYODIDE_URL = "https://unpkg.com";
 
 /** Embed text safely inside an inline <script>. */
 export function scriptLiteral(code: string) {
