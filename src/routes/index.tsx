@@ -23,6 +23,7 @@ import {
 } from "@/lib/preview-runtime";
 import { buildRunnerHtml, LANGUAGES, LANGUAGE_SAMPLES, type EditorLanguage } from "@/lib/language-runner";
 import { editorUploadFromFiles } from "@/lib/editor-upload";
+import type { PythonPackage } from "@/lib/python-package";
 
 export const Route = createFileRoute("/")({
   loader: () => getGateContent(),
@@ -54,6 +55,7 @@ function Index() {
   const [removingGame, setRemovingGame] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [htmlPackage, setHtmlPackage] = useState(() => createStandalonePackage(SAMPLE));
+  const [pythonPackage, setPythonPackage] = useState<PythonPackage | null>(null);
   const [code, setCode] = useState(SAMPLE);
   const [language, setLanguage] = useState<EditorLanguage>("html");
   const [scripts, setScripts] = useState<Record<"javascript" | "python", string>>(LANGUAGE_SAMPLES);
@@ -81,16 +83,25 @@ function Index() {
     try {
       const upload = await editorUploadFromFiles(incoming);
       if (sequence !== loadSequence.current) return;
+
       if (upload.language === "python") {
+        setPythonPackage(upload.pythonPackage);
         setScripts((current) => ({ ...current, python: upload.pythonPackage.code }));
         setPythonFileName(upload.pythonPackage.name);
         setLanguage("python");
+        const nextSession = await createPreviewSession(
+          createStandalonePackage(buildRunnerHtml("python", upload.pythonPackage.code, upload.pythonPackage)),
+        );
+        if (sequence === loadSequence.current) setSession(nextSession);
         return;
       }
+
       setHtmlPackage(upload.htmlPackage);
       setCode(packageEntryCode(upload.htmlPackage));
       setFileName(upload.htmlPackage.name);
       setLanguage("html");
+      const nextSession = await createPreviewSession(upload.htmlPackage);
+      if (sequence === loadSequence.current) setSession(nextSession);
     } catch (cause) {
       if (sequence === loadSequence.current) {
         setError(cause instanceof Error ? cause.message : "Could not read those files.");
@@ -120,7 +131,11 @@ function Index() {
     try {
       setSession(
         await createPreviewSession(
-          language === "html" ? htmlPackage : createStandalonePackage(buildRunnerHtml(language, scripts[language])),
+          language === "html"
+            ? htmlPackage
+            : createStandalonePackage(
+                buildRunnerHtml(language, scripts[language], language === "python" ? pythonPackage : null),
+              ),
         ),
       );
     } catch (cause) {
@@ -174,9 +189,10 @@ function Index() {
     }
   };
 
-  const addHtml = async () => {
-    if (!code.trim()) {
-      setError("Paste some HTML first.");
+  const addGame = async () => {
+    const rawCode = language === "html" ? code : scripts[language];
+    if (!rawCode.trim()) {
+      setError("Paste or upload a game first.");
       return;
     }
     const title = window.prompt("What should this game be called?")?.trim();
@@ -185,7 +201,11 @@ function Index() {
     setError(null);
     setNotice(null);
     try {
-      await saveGame({ data: { title, html: code } });
+      const payloadHtml =
+        language === "html"
+          ? code
+          : buildRunnerHtml(language, scripts[language], language === "python" ? pythonPackage : null);
+      await saveGame({ data: { title, html: payloadHtml } });
       setNotice(`Saved "${title}" to your game folder.`);
       await router.invalidate();
     } catch (cause) {
@@ -235,243 +255,3 @@ function Index() {
           )}
           <button
             onClick={() => setSession(null)}
-            className="rounded-md bg-primary/80 px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary"
-          >
-            Exit (Esc)
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const pages = packagePages(htmlPackage);
-
-  return (
-    <main
-      className="flex min-h-screen flex-col gap-4 bg-background p-6"
-      onDragEnter={(event) => {
-        if (!event.dataTransfer?.types?.includes("Files")) return;
-        dragDepth.current += 1;
-        setDragging(true);
-      }}
-      onDragOver={(event) => event.preventDefault()}
-      onDragLeave={() => {
-        dragDepth.current = Math.max(0, dragDepth.current - 1);
-        if (dragDepth.current === 0) setDragging(false);
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        dragDepth.current = 0;
-        setDragging(false);
-        void filesFromDrop(event.dataTransfer).then(loadIncoming).catch((cause: unknown) => {
-          setLoading(false);
-          setError(cause instanceof Error ? cause.message : "Could not read the dropped files.");
-        });
-      }}
-    >
-      <input
-        id="package-input"
-        ref={fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={(event) => {
-          if (event.target.files?.length) void loadIncoming(filesFromFileList(event.target.files));
-          event.target.value = "";
-        }}
-      />
-      <input
-        id="folder-input"
-        ref={folderInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={(event) => {
-          if (event.target.files?.length) void loadIncoming(filesFromFileList(event.target.files));
-          event.target.value = "";
-        }}
-      />
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 font-mono text-2xl font-bold text-foreground">
-          <Gamepad2 className="size-7" aria-hidden="true" /> FullFrame
-        </h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <SignInControl gate={gate} />
-          {gate.unlocked && language === "html" && (
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void addHtml()}
-              className="inline-flex items-center gap-2 rounded-md border border-input bg-card px-4 py-2 font-medium text-card-foreground hover:bg-accent disabled:opacity-50"
-            >
-              <FilePlus className="size-4" aria-hidden="true" />
-              {saving ? "Saving…" : "Add HTML"}
-            </button>
-          )}
-          <button
-            disabled={loading}
-            onClick={() => fileInputRef.current?.click()}
-            className="rounded-md border border-input bg-card px-4 py-2 font-medium text-card-foreground hover:bg-accent disabled:opacity-50"
-          >
-            ⬆ Upload HTML / PY / ZIP
-          </button>
-          <button
-            disabled={loading}
-            onClick={() => folderInputRef.current?.click()}
-            className="rounded-md border border-input bg-card px-4 py-2 font-medium text-card-foreground hover:bg-accent disabled:opacity-50"
-          >
-            Upload folder
-          </button>
-          <button
-            disabled={loading || starting}
-            onClick={() => void run()}
-            className="rounded-md bg-primary px-5 py-2 font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
-            {starting ? "Starting…" : "▶ Run full page"}
-          </button>
-        </div>
-      </header>
-      <p className="text-sm text-muted-foreground">
-        Paste HTML, JavaScript, or Python. Upload HTML, Python, a ZIP, or a whole folder, or drag them here — press Esc to come back.
-      </p>
-      {gate.unlocked ? (
-        <section aria-label="Hayes's game folder" className="rounded-xl border border-border bg-card p-4 text-card-foreground">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <FolderOpen className="size-5" aria-hidden="true" /> Hayes's game folder
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">Choose any game to open it across the page. Games you added have an ✕ to remove them.</p>
-            </div>
-            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">{gate.games.length} games</span>
-          </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {gate.games.map((game) => (
-              <div key={game.id} className="relative">
-                <button
-                  type="button"
-                  aria-label={`Play ${game.title}`}
-                  disabled={openingGame !== null || removingGame !== null}
-                  onClick={() => void openLibraryGame(game)}
-                  className="group flex min-h-20 w-full items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary hover:bg-accent disabled:opacity-60"
-                >
-                  <span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
-                    <Play className="size-4 fill-current" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-medium leading-tight">{openingGame === game.id ? "Opening…" : game.title}</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">{game.kind === "flash" ? "Flash classic" : game.kind === "saved" ? "Added by you" : "HTML game"}</span>
-                  </span>
-                </button>
-                {game.kind === "saved" && (
-                  <button
-                    type="button"
-                    aria-label={`Remove ${game.title}`}
-                    title={`Remove ${game.title}`}
-                    disabled={removingGame !== null}
-                    onClick={() => void removeLibraryGame(game)}
-                    className="absolute right-2 top-2 grid size-7 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
-                  >
-                    {removingGame === game.id ? (
-                      <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
-                    ) : (
-                      <X className="size-3.5" aria-hidden="true" />
-                    )}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : (
-        <div className="flex items-center gap-3 rounded-lg border border-dashed border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
-          <LockKeyhole className="size-4 shrink-0" aria-hidden="true" />
-          Sign in to open Hayes's private game folder.
-        </div>
-      )}
-      <div role="tablist" aria-label="Language" className="flex w-fit gap-1 rounded-lg border border-border bg-card p-1">
-        {LANGUAGES.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={language === item.id}
-            onClick={() => setLanguage(item.id)}
-            className={`rounded-md px-3 py-1 font-mono text-sm ${language === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-      {language !== "html" && (
-        <p className="text-xs text-muted-foreground">
-          {language === "python" ? "Python runs right in your browser (the first run downloads Python, so give it a few seconds)." : "JavaScript runs in the page; console.log output is shown on screen."}
-        </p>
-      )}
-      {language === "html" && fileName && (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
-          <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">{fileName}</span>
-          {htmlPackage.files.length > 1 && (
-            <span className="text-xs text-muted-foreground">{htmlPackage.files.length} files</span>
-          )}
-          {pages.length > 1 && (
-            <label className="flex items-center gap-1 text-xs text-muted-foreground">
-              Start page
-              <select
-                aria-label="Start page"
-                value={htmlPackage.entryPath}
-                onChange={(event) => {
-                  const entryPath = event.target.value;
-                  const nextPackage = { ...htmlPackage, entryPath };
-                  setHtmlPackage(nextPackage);
-                  setCode(packageEntryCode(nextPackage));
-                }}
-                className="rounded border border-input bg-card px-2 py-1 font-mono text-card-foreground"
-              >
-                {pages.map((page) => <option key={page} value={page}>{page}</option>)}
-              </select>
-            </label>
-          )}
-          <button onClick={clear} className="text-xs text-muted-foreground underline hover:text-foreground">
-            Clear
-          </button>
-        </div>
-      )}
-      {language === "python" && pythonFileName && (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
-          <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">{pythonFileName}</span>
-          <button
-            onClick={() => {
-              setScripts((current) => ({ ...current, python: LANGUAGE_SAMPLES.python }));
-              setPythonFileName(null);
-              setError(null);
-            }}
-            className="text-xs text-muted-foreground underline hover:text-foreground"
-          >
-            Clear
-          </button>
-        </div>
-      )}
-      {loading && <p className="text-sm text-muted-foreground">Reading your files…</p>}
-      {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <textarea
-        aria-label={`${LANGUAGES.find((item) => item.id === language)?.label} code`}
-        value={language === "html" ? code : scripts[language]}
-        onChange={(event) => {
-          const nextCode = event.target.value;
-          if (language !== "html") {
-            setScripts((current) => ({ ...current, [language]: nextCode }));
-            return;
-          }
-          setCode(nextCode);
-          setHtmlPackage((current) => updatePackageEntry(current, nextCode));
-        }}
-        spellCheck={false}
-        className={`min-h-[70vh] flex-1 rounded-lg border bg-card p-4 font-mono text-sm text-card-foreground outline-none focus:ring-2 focus:ring-ring ${
-          dragging ? "border-primary ring-2 ring-ring" : "border-input"
-        }`}
-      />
-    </main>
-  );
-}
