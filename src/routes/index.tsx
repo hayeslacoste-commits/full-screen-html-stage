@@ -2,20 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FilePlus, FolderOpen, Gamepad2, LockKeyhole, Play, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SignInControl } from "@/components/sign-in-control";
-import { addSavedGame, getGateContent, getSavedGameHtml, removeSavedGame } from "@/lib/gate.functions";
 import { useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import type { LibraryGame } from "@/lib/gate-shared";
 import {
-  createStandalonePackage,
-  filesFromDrop,
-  filesFromFileList,
-  packageEntryCode,
-  packageFromFiles,
-  packagePages,
-  updatePackageEntry,
-  type IncomingFile,
-} from "@/lib/html-package";
+  addSavedGame,
+  createSavedGameUpload,
+  finalizeSavedGameUpload,
+  getGateContent,
+  getSavedGameHtml,
+  removeSavedGame,
+} from "@/lib/gate.functions";
 import {
   createPreviewSession,
   disposePreviewSession,
