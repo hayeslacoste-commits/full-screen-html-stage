@@ -22,15 +22,16 @@ import {
   type PreviewSession,
 } from "@/lib/preview-runtime";
 import { buildRunnerHtml, LANGUAGES, LANGUAGE_SAMPLES, type EditorLanguage } from "@/lib/language-runner";
+import { editorUploadFromFiles } from "@/lib/editor-upload";
 
 export const Route = createFileRoute("/")({
   loader: () => getGateContent(),
   head: () => ({
     meta: [
-      { title: "FullFrame — Run HTML Full Screen" },
-      { name: "description", content: "Paste HTML, upload a file, ZIP, or folder, and run it across the whole page with its assets." },
-      { property: "og:title", content: "FullFrame — Run HTML Full Screen" },
-      { property: "og:description", content: "Run standalone HTML or complete HTML packages with their scripts, styles, media, and linked pages." },
+      { title: "FullFrame — Run HTML, JavaScript & Python" },
+      { name: "description", content: "Paste code or upload HTML, Python, ZIPs, and folders, then run them across the whole page." },
+      { property: "og:title", content: "FullFrame — Run HTML, JavaScript & Python" },
+      { property: "og:description", content: "Run HTML packages with their assets, JavaScript, and Python directly in your browser." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -57,6 +58,7 @@ function Index() {
   const [language, setLanguage] = useState<EditorLanguage>("html");
   const [scripts, setScripts] = useState<Record<"javascript" | "python", string>>(LANGUAGE_SAMPLES);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [pythonFileName, setPythonFileName] = useState<string | null>(null);
   const [session, setSession] = useState<PreviewSession | null>(null);
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -77,11 +79,17 @@ function Index() {
     setLoading(true);
     setError(null);
     try {
-      const nextPackage = await packageFromFiles(incoming);
+      const upload = await editorUploadFromFiles(incoming);
       if (sequence !== loadSequence.current) return;
-      setHtmlPackage(nextPackage);
-      setCode(packageEntryCode(nextPackage));
-      setFileName(nextPackage.name);
+      if (upload.language === "python") {
+        setScripts((current) => ({ ...current, python: upload.pythonPackage.code }));
+        setPythonFileName(upload.pythonPackage.name);
+        setLanguage("python");
+        return;
+      }
+      setHtmlPackage(upload.htmlPackage);
+      setCode(packageEntryCode(upload.htmlPackage));
+      setFileName(upload.htmlPackage.name);
       setLanguage("html");
     } catch (cause) {
       if (sequence === loadSequence.current) {
@@ -116,7 +124,7 @@ function Index() {
         ),
       );
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not start this HTML package.");
+      setError(cause instanceof Error ? cause.message : "Could not start this code.");
     } finally {
       setStarting(false);
     }
@@ -141,6 +149,7 @@ function Index() {
       setHtmlPackage(nextPackage);
       setCode(packageEntryCode(nextPackage));
       setFileName(nextPackage.name);
+      setLanguage("html");
       setSession(await createPreviewSession(nextPackage));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : `Could not start ${game.title}.`);
@@ -194,6 +203,8 @@ function Index() {
     setError(null);
   };
 
+  const activeFileName = language === "html" ? fileName : language === "python" ? pythonFileName : null;
+
   if (session) {
     return (
       <div className="fixed inset-0 z-50 bg-background">
@@ -219,8 +230,8 @@ function Index() {
           }}
         />
         <div className="absolute left-3 top-3 flex items-center gap-2">
-          {fileName && (
-            <span className="rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">{fileName}</span>
+          {activeFileName && (
+            <span className="rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">{activeFileName}</span>
           )}
           <button
             onClick={() => setSession(null)}
@@ -302,7 +313,7 @@ function Index() {
             onClick={() => fileInputRef.current?.click()}
             className="rounded-md border border-input bg-card px-4 py-2 font-medium text-card-foreground hover:bg-accent disabled:opacity-50"
           >
-            ⬆ Upload HTML / ZIP
+            ⬆ Upload HTML / PY / ZIP
           </button>
           <button
             disabled={loading}
@@ -321,7 +332,7 @@ function Index() {
         </div>
       </header>
       <p className="text-sm text-muted-foreground">
-        Paste HTML, choose a file or ZIP, add a whole folder, or drag them here. Linked files and pages run together — press Esc to come back.
+        Paste HTML, JavaScript, or Python. Upload HTML, Python, a ZIP, or a whole folder, or drag them here — press Esc to come back.
       </p>
       {gate.unlocked ? (
         <section aria-label="Hayes's game folder" className="rounded-xl border border-border bg-card p-4 text-card-foreground">
@@ -426,7 +437,22 @@ function Index() {
           </button>
         </div>
       )}
-      {loading && <p className="text-sm text-muted-foreground">Reading your HTML package…</p>}
+      {language === "python" && pythonFileName && (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
+          <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">{pythonFileName}</span>
+          <button
+            onClick={() => {
+              setScripts((current) => ({ ...current, python: LANGUAGE_SAMPLES.python }));
+              setPythonFileName(null);
+              setError(null);
+            }}
+            className="text-xs text-muted-foreground underline hover:text-foreground"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+      {loading && <p className="text-sm text-muted-foreground">Reading your files…</p>}
       {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <textarea

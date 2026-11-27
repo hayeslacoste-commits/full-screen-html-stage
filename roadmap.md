@@ -11,3 +11,4 @@
 - [x] Add a secure email-then-password sign-in gate with a persistent session and sign out — verified wrong details, refresh, and sign out in preview
 - [x] Add all 17 uploaded games to the signed-in game folder
 - [x] Verify every supplied game launches and renders, including the remaining Papa's games and Happy Wheels; add Flash support and fix start-page and provider-loading issues
+- [x] Upload Python files and Python-only ZIPs into the Python editor, including ZIPs with README files — verified in preview
