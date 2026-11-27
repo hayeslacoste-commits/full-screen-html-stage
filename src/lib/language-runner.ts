@@ -81,7 +81,7 @@ export function buildRunnerHtml(
     "<script>",
     "(async()=>{",
     '  write("Downloading Python runtime…","info");',
-    '  const cdns=["https://unpkg.com","https://jsdelivr.net"];',
+    '  const cdns=[location.protocol+"//cdn.jsdelivr.net/pyodide/v0.26.4/full/",location.protocol+"//://unpkg.com"];',
     "  let loadedBase=null;",
     "  for(const base of cdns){",
     "    try{",
