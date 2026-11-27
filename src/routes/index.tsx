@@ -21,6 +21,7 @@ import {
   disposePreviewSession,
   type PreviewSession,
 } from "@/lib/preview-runtime";
+import { buildRunnerHtml, LANGUAGES, LANGUAGE_SAMPLES, type EditorLanguage } from "@/lib/language-runner";
 
 export const Route = createFileRoute("/")({
   loader: () => getGateContent(),
@@ -53,6 +54,8 @@ function Index() {
   const [notice, setNotice] = useState<string | null>(null);
   const [htmlPackage, setHtmlPackage] = useState(() => createStandalonePackage(SAMPLE));
   const [code, setCode] = useState(SAMPLE);
+  const [language, setLanguage] = useState<EditorLanguage>("html");
+  const [scripts, setScripts] = useState<Record<"javascript" | "python", string>>(LANGUAGE_SAMPLES);
   const [fileName, setFileName] = useState<string | null>(null);
   const [session, setSession] = useState<PreviewSession | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -79,6 +82,7 @@ function Index() {
       setHtmlPackage(nextPackage);
       setCode(packageEntryCode(nextPackage));
       setFileName(nextPackage.name);
+      setLanguage("html");
     } catch (cause) {
       if (sequence === loadSequence.current) {
         setError(cause instanceof Error ? cause.message : "Could not read those files.");
@@ -106,7 +110,11 @@ function Index() {
     setStarting(true);
     setError(null);
     try {
-      setSession(await createPreviewSession(htmlPackage));
+      setSession(
+        await createPreviewSession(
+          language === "html" ? htmlPackage : createStandalonePackage(buildRunnerHtml(language, scripts[language])),
+        ),
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not start this HTML package.");
     } finally {
@@ -278,7 +286,7 @@ function Index() {
         </h1>
         <div className="flex flex-wrap items-center gap-2">
           <SignInControl gate={gate} />
-          {gate.unlocked && (
+          {gate.unlocked && language === "html" && (
             <button
               type="button"
               disabled={saving}
@@ -370,7 +378,26 @@ function Index() {
           Sign in to open Hayes's private game folder.
         </div>
       )}
-      {fileName && (
+      <div role="tablist" aria-label="Language" className="flex w-fit gap-1 rounded-lg border border-border bg-card p-1">
+        {LANGUAGES.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={language === item.id}
+            onClick={() => setLanguage(item.id)}
+            className={`rounded-md px-3 py-1 font-mono text-sm ${language === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      {language !== "html" && (
+        <p className="text-xs text-muted-foreground">
+          {language === "python" ? "Python runs right in your browser (the first run downloads Python, so give it a few seconds)." : "JavaScript runs in the page; console.log output is shown on screen."}
+        </p>
+      )}
+      {language === "html" && fileName && (
         <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
           <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">{fileName}</span>
           {htmlPackage.files.length > 1 && (
@@ -403,10 +430,14 @@ function Index() {
       {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <textarea
-        aria-label="HTML code"
-        value={code}
+        aria-label={`${LANGUAGES.find((item) => item.id === language)?.label} code`}
+        value={language === "html" ? code : scripts[language]}
         onChange={(event) => {
           const nextCode = event.target.value;
+          if (language !== "html") {
+            setScripts((current) => ({ ...current, [language]: nextCode }));
+            return;
+          }
           setCode(nextCode);
           setHtmlPackage((current) => updatePackageEntry(current, nextCode));
         }}
