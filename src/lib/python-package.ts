@@ -6,6 +6,7 @@ export interface PythonPackage {
   entryPath: string;
   code: string;
   pythonFiles: string[];
+  files: PreviewFile[];
 }
 
 const PYTHON_EXTENSION = /\.py$/i;
@@ -35,7 +36,7 @@ function comparePythonFiles(a: string, b: string) {
   );
 }
 
-/** Select the main Python file from an uploaded folder or extracted ZIP. */
+/** Select the main Python file while keeping every file in the uploaded folder or ZIP. */
 export function createPythonPackage(entries: PreviewFile[], name = "Python package"): PythonPackage {
   const cleaned = entries.flatMap((entry) => {
     if (entry.path.endsWith("/")) return [];
@@ -66,6 +67,7 @@ export function createPythonPackage(entries: PreviewFile[], name = "Python packa
     entryPath,
     code: new TextDecoder().decode(entry.data),
     pythonFiles,
+    files,
   };
 }
 
